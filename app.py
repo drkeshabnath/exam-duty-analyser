@@ -286,3 +286,29 @@ st.dataframe(merged)
 
 st.markdown("### Overall Duty Distribution")
 st.bar_chart(merged.set_index("Name")["TotalDuty"])
+
+# ----------------- FINAL SUMMARY TABLE -----------------
+st.subheader("Overall Duty Assignment Summary")
+
+total_faculty = len(merged)
+no_duty_count = (merged["TotalDuty"] == 0).sum()
+duty_assigned_count = total_faculty - no_duty_count
+
+summary_df = pd.DataFrame({
+    "Metric": [
+        "Total Faculty in Master List",
+        "Faculty Assigned No Duty",
+        "Faculty Assigned Duty",
+        "Percentage Assigned Duty",
+        "Percentage No Duty"
+    ],
+    "Value": [
+        total_faculty,
+        no_duty_count,
+        duty_assigned_count,
+        f"{(duty_assigned_count / total_faculty) * 100:.2f}%",
+        f"{(no_duty_count / total_faculty) * 100:.2f}%"
+    ]
+})
+
+st.dataframe(summary_df)

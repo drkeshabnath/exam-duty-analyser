@@ -32,269 +32,136 @@ full_faculty_list = [
     "Dr. Debajyoti Dutta", "Dr. Keshab Nath", "Dr. Kamal Saharia",
     "Dr. Jagannath Bhuyan", "Dr. Bobby D. Langthasa"
 ]
-
-# Pre-normalise master names (strip spaces)
 full_faculty_list = [n.strip() for n in full_faculty_list]
 
-# ----------------- BASIC CONFIG -----------------
-st.set_page_config(
-    page_title="Exam Duty Analyser",
-    layout="wide"
+
+# ----------------- STREAMLIT UI -----------------
+st.set_page_config(page_title="Single File Duty Analysis", layout="wide")
+st.title("Exam Duty Analysis (Single File Version)")
+st.caption("Upload one duty file (Name + date/session columns).")
+
+
+uploaded_file = st.file_uploader(
+    "Upload duty file (Excel/CSV)",
+    type=["xlsx", "xls", "csv"]
 )
 
-st.title("Exam Invigilation Duty Analyser")
-st.caption("Upload duty-list files (Name + date/session columns) and get semester-wise analysis.")
-
-st.markdown("""
-**Expected format for each file**
-
-- First column: **Name**  
-- Remaining columns: **Exam dates / sessions** (e.g., 04/12/2025, 06/12/2025 M, 06/12/2025 E, etc.)  
-- Any non-empty value (✓, tick, text, etc.) means **duty assigned**.
-""")
-
-# ----------------- FILE UPLOAD -----------------
-uploaded_files = st.file_uploader(
-    "Upload one or more duty-list files (Excel/CSV)",
-    type=["xlsx", "xls", "csv"],
-    accept_multiple_files=True
-)
-
-if not uploaded_files:
-    st.info("Upload at least one duty-list file to begin.")
+if not uploaded_file:
     st.stop()
 
-all_long_dfs = []
 
-st.subheader("Step 1: Map each file to a Semester / Exam")
+# ----------------- READ FILE -----------------
+if uploaded_file.name.lower().endswith(".csv"):
+    df = pd.read_csv(uploaded_file)
+else:
+    df = pd.read_excel(uploaded_file)
 
-for idx, up_file in enumerate(uploaded_files):
-    col1, col2 = st.columns([3, 2])
+df.columns = [c.strip() for c in df.columns]
+df["Name"] = df["Name"].astype(str).strip()
 
-    with col1:
-        st.write(f"**File {idx + 1}:** `{up_file.name}`")
-    with col2:
-        sem_name = st.text_input(
-            f"Semester / Exam name for file {idx + 1}",
-            value=up_file.name.replace(".xlsx", "").replace(".csv", ""),
-            key=f"sem_{idx}"
-        )
+st.subheader("Uploaded File Preview")
+st.dataframe(df.head())
 
-    # ---- Read file ----
-    if up_file.name.lower().endswith(".csv"):
-        df = pd.read_csv(up_file)
-    else:
-        df = pd.read_excel(up_file)
 
-    # Strip column names
-    df.columns = [str(c).strip() for c in df.columns]
+# ----------------- TRANSFORM INTO LONG FORMAT -----------------
+date_cols = [c for c in df.columns if c != "Name"]
 
-    if "Name" not in df.columns:
-        st.error(
-            f"`Name` column not found in `{up_file.name}`. "
-            "Please ensure the first column header is exactly 'Name'."
-        )
-        st.stop()
-
-    # NORMALISE NAMES: remove extra spaces etc.
-    df["Name"] = df["Name"].astype(str).str.strip()
-
-    st.write("Preview:")
-    st.dataframe(df.head())
-
-    # ---- Reshape to long format ----
-    date_cols = [c for c in df.columns if c != "Name"]
-
-    long_df = df.melt(
-        id_vars=["Name"],
-        value_vars=date_cols,
-        var_name="Date",
-        value_name="DutyMark"
-    )
-
-    long_df["DutyMark"] = long_df["DutyMark"].astype(str).str.strip()
-    long_df = long_df[long_df["DutyMark"] != ""]   # only rows with duty
-    long_df["DutyCount"] = 1
-    long_df["Semester"] = sem_name
-
-    all_long_dfs.append(long_df)
-
-# ----------------- COMBINE ALL FILES -----------------
-master = pd.concat(all_long_dfs, ignore_index=True)
-
-# Normalise again just in case
-master["Name"] = master["Name"].astype(str).str.strip()
-master["Date"] = master["Date"].astype(str).str.strip()
-
-st.success(f"Combined rows (faculty–date duty assignments) from all files: **{len(master)}**")
-
-# ----------------- FILTERS -----------------
-st.subheader("Step 2: Filters")
-
-semesters = sorted(master["Semester"].unique())
-selected_semesters = st.multiselect(
-    "Select semester(s) to include in analysis",
-    options=semesters,
-    default=semesters
+long_df = df.melt(
+    id_vars=["Name"],
+    value_vars=date_cols,
+    var_name="Date",
+    value_name="DutyMark"
 )
 
-filtered = master[master["Semester"].isin(selected_semesters)]
+long_df["DutyMark"] = long_df["DutyMark"].astype(str).str.strip()
+long_df = long_df[long_df["DutyMark"] != ""]
+long_df["DutyCount"] = 1
 
-if filtered.empty:
-    st.warning("No data after filtering. Please change the selection.")
-    st.stop()
+st.success(f"Total duty assignments found: {len(long_df)}")
 
-# ----------------- SUMMARY TABLES -----------------
-st.subheader("Step 3: Summary Tables")
+
+# ----------------- SUMMARY -----------------
+st.subheader("Faculty-wise Duty Summary")
 
 faculty_summary = (
-    filtered.groupby(["Semester", "Name"])["DutyCount"]
+    long_df.groupby("Name")["DutyCount"]
     .sum()
     .reset_index()
-    .sort_values(["Semester", "DutyCount"], ascending=[True, False])
+    .sort_values("DutyCount", ascending=False)
 )
 
-date_summary = (
-    filtered.groupby(["Semester", "Date"])["DutyCount"]
-    .sum()
-    .reset_index()
-    .sort_values(["Semester", "Date"])
-)
+st.dataframe(faculty_summary)
 
-t1, t2 = st.tabs(["Faculty-wise duties", "Date/session-wise duties"])
-
-with t1:
-    st.write("Total duties per faculty (per semester):")
-    st.dataframe(faculty_summary)
-
-with t2:
-    st.write("Total duties per date/session (per semester):")
-    st.dataframe(date_summary)
 
 # ----------------- CHARTS -----------------
-st.subheader("Step 4: Visual Analysis")
+st.subheader("Graphical Analysis")
 
-sem_for_plot = st.selectbox(
-    "Select a single semester/exam for charts",
-    options=semesters
-)
+col1, col2 = st.columns(2)
 
-plot_df = filtered[filtered["Semester"] == sem_for_plot]
-
-col_a, col_b = st.columns(2)
-
-# (A) Bar chart: duties per faculty
-with col_a:
-    st.markdown(f"### Bar chart – Duties per Faculty ({sem_for_plot})")
-    fac_counts = (
-        plot_df.groupby("Name")["DutyCount"]
-        .sum()
-        .sort_values(ascending=False)
-    )
-
+with col1:
+    st.markdown("### Bar Chart – Duty per Faculty")
     fig1, ax1 = plt.subplots(figsize=(6, 4))
-    fac_counts.plot(kind="bar", ax=ax1)
-    ax1.set_ylabel("No. of Duties")
-    ax1.set_xlabel("Faculty")
+    faculty_summary.set_index("Name")["DutyCount"].plot(kind="bar", ax=ax1)
+    ax1.set_title("Duty Distribution")
+    ax1.set_ylabel("Duties")
     ax1.set_xticklabels(ax1.get_xticklabels(), rotation=90)
-    ax1.set_title("Duty Distribution by Faculty")
-    fig1.tight_layout()
     st.pyplot(fig1)
 
-# (B) Pie chart: share of duty by faculty
-with col_b:
-    st.markdown(f"### Pie chart – Share of Duties ({sem_for_plot})")
-    fac_counts = (
-        plot_df.groupby("Name")["DutyCount"]
-        .sum()
-        .sort_values(ascending=False)
-    )
-
+with col2:
+    st.markdown("### Pie Chart – Duty Share")
     fig2, ax2 = plt.subplots(figsize=(6, 4))
     ax2.pie(
-        fac_counts.values,
-        labels=fac_counts.index,
+        faculty_summary["DutyCount"],
+        labels=faculty_summary["Name"],
         autopct="%1.1f%%"
     )
-    ax2.set_title("Share of Total Duties by Faculty")
-    fig2.tight_layout()
+    ax2.set_title("Percentage Share of Duties")
     st.pyplot(fig2)
 
-# ----------------- FAIRNESS SUMMARY -----------------
-st.subheader("Step 5: Fairness Summary (per Semester)")
-
-fair_stats = (
-    faculty_summary.groupby("Semester")["DutyCount"]
-    .agg(["min", "max", "mean", "std"])
-    .reset_index()
-)
-
-st.write("Basic statistics of duty load per faculty:")
-st.dataframe(fair_stats)
 
 # ----------------- ADVANCED ANALYSIS -----------------
-st.subheader("Step 6: Advanced Duty Load Analysis (Using Full Faculty List)")
+st.subheader("Advanced Analysis (Using Master Faculty List)")
 
-# Total duty per faculty across the SELECTED semesters
-faculty_duty_total = (
-    filtered.groupby("Name")["DutyCount"]
-    .sum()
-    .reset_index()
-)
-faculty_duty_total["Name"] = faculty_duty_total["Name"].astype(str).str.strip()
-
-# Master roster DataFrame
+# Merge with master list
 roster_df = pd.DataFrame({"Name": full_faculty_list})
-roster_df["Name"] = roster_df["Name"].astype(str).str.strip()
+merged = roster_df.merge(faculty_summary, on="Name", how="left")
+merged["DutyCount"] = merged["DutyCount"].fillna(0)
+merged = merged.sort_values("DutyCount")
 
-# Merge roster with duty totals to find zero-duty people
-roster_with_duty = roster_df.merge(
-    faculty_duty_total,
-    on="Name",
-    how="left"
-)
-roster_with_duty["DutyCount"] = roster_with_duty["DutyCount"].fillna(0)
 
-# Sort by duty count (ascending)
-roster_with_duty = roster_with_duty.sort_values("DutyCount", ascending=True).reset_index(drop=True)
-
-# Faculty with zero duty
-zero_duty = roster_with_duty[roster_with_duty["DutyCount"] == 0]
-
-# Minimum > 0 duty FROM ROSTER
-if (roster_with_duty["DutyCount"] > 0).any():
-    min_duty = roster_with_duty[roster_with_duty["DutyCount"] > 0]["DutyCount"].min()
-    min_duty_faculty = roster_with_duty[roster_with_duty["DutyCount"] == min_duty]
-else:
-    min_duty = 0
-    min_duty_faculty = pd.DataFrame(columns=roster_with_duty.columns)
-
-# Maximum duty from roster
-max_duty = roster_with_duty["DutyCount"].max()
-max_duty_faculty = roster_with_duty[roster_with_duty["DutyCount"] == max_duty]
-
-# ----- Display advanced results -----
-st.markdown("### 6.1 Faculty Not Assigned Any Duty (from master list)")
+# Zero-Duty
+zero_duty = merged[merged["DutyCount"] == 0]
+st.markdown("### Faculty with **Zero** Duties")
 if zero_duty.empty:
-    st.success("✅ All faculty in the master list received at least one duty in the selected semesters.")
+    st.success("All faculty received at least one duty.")
 else:
-    st.error("❗ The following faculty received **zero exam duties** in the selected semesters:")
+    st.error("These faculty received ZERO duties:")
     st.dataframe(zero_duty)
 
-st.markdown("### 6.2 Faculty With Minimum (Non-zero) Duties (from master list)")
-if min_duty == 0 and min_duty_faculty.empty:
-    st.info("No faculty with non-zero duties found (check input files).")
+
+# Minimum duty (non-zero)
+non_zero = merged[merged["DutyCount"] > 0]
+if not non_zero.empty:
+    min_duty = non_zero["DutyCount"].min()
+    min_list = merged[merged["DutyCount"] == min_duty]
+    st.markdown("### Faculty with Minimum Duties")
+    st.info(f"Minimum duties: **{min_duty}**")
+    st.dataframe(min_list)
 else:
-    st.info(f"Minimum non-zero duties assigned: **{min_duty}**")
-    st.dataframe(min_duty_faculty)
+    st.info("No faculty had non-zero duties.")
 
-st.markdown("### 6.3 Faculty With Maximum Duties (from master list)")
-st.success(f"Maximum duties assigned to a single faculty (from master list): **{max_duty}**")
-st.dataframe(max_duty_faculty)
 
-st.markdown("### 6.4 Overall Duty Distribution (Master list only)")
-st.write("Duty count for every faculty in the master list (including those with zero duties):")
-st.dataframe(roster_with_duty)
+# Maximum duty
+max_duty = merged["DutyCount"].max()
+max_list = merged[merged["DutyCount"] == max_duty]
+st.markdown("### Faculty with Maximum Duties")
+st.success(f"Maximum duties: **{max_duty}**")
+st.dataframe(max_list)
 
-st.markdown("#### Bar Chart – Duty Distribution for All Faculty in Master List")
-st.bar_chart(roster_with_duty.set_index("Name")["DutyCount"])
+
+# Full Distribution
+st.markdown("### Full Duty Distribution (Master List)")
+st.dataframe(merged)
+
+st.markdown("### Distribution Bar Chart")
+st.bar_chart(merged.set_index("Name")["DutyCount"])

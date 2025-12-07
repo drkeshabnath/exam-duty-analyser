@@ -132,7 +132,7 @@ available_files = [
     if f.lower().endswith(".xlsx") or f.lower().endswith(".xls") or f.lower().endswith(".csv")
 ]
 
-st.subheader("Step 1: Select a Duty File")
+st.subheader("Select a Duty File")
 
 if not available_files:
     st.error("❌ No .xlsx/.xls/.csv files found in 'duty_files/'.")

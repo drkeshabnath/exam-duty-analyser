@@ -283,56 +283,14 @@ with col2:
     
         fig2, ax2 = plt.subplots(figsize=(6, 4))
 
-################################################################
-st.subheader("Duty Heatmap – Faculty × Sessions")
-
-# --------------------------
-# Build duty pivot table
-# --------------------------
-# mapped_df contains RawName → MappedName mapping + session columns
-# duty_cols is a list of all exam session columns
-
-heatmap_df = mapped_df.pivot_table(
-    index="MappedName",
-    values=duty_cols,
-    aggfunc="sum"
-)
-
-# Sort by total duty load (optional but cleaner)
-heatmap_df["TotalDuty"] = heatmap_df.sum(axis=1)
-heatmap_df = heatmap_df.sort_values("TotalDuty", ascending=False)
-heatmap_df = heatmap_df.drop(columns=["TotalDuty"])
-
-# --------------------------
-# Draw Seaborn Heatmap
-# --------------------------
-fig, ax = plt.subplots(figsize=(14, 10))
-
-sns.heatmap(
-    heatmap_df,
-    cmap="YlGnBu",     # You can use: "Blues", "OrRd", "coolwarm", etc.
-    annot=True,        # Show numbers inside cells
-    fmt="d",           # Integer formatting
-    linewidths=0.5,
-    linecolor="gray",
-    cbar_kws={'label': 'Duty Count'}
-)
-
-ax.set_title("Exam Duty Heatmap (Faculty × Exam Sessions)", fontsize=16)
-ax.set_xlabel("Exam Sessions / Dates")
-ax.set_ylabel("Faculty")
-
-st.pyplot(fig)
-
-################################################################
-       # ax2.pie(
-        #    canonical_summary["TotalDuty"],
-         #   labels=canonical_summary["Name"],
-         #   autopct="%1.1f%%"
-        #)
-        #ax2.set_title("Duty Share (%) – Canonical")
-        #fig2.tight_layout()
-        #st.pyplot(fig2)
+        ax2.pie(
+            canonical_summary["TotalDuty"],
+            labels=canonical_summary["Name"],
+            autopct="%1.1f%%"
+        )
+        ax2.set_title("Duty Share (%) – Canonical")
+        fig2.tight_layout()
+        st.pyplot(fig2)
 
 
 

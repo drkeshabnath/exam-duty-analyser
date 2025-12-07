@@ -34,10 +34,10 @@ full_faculty_list = [
 ]
 full_faculty_list = [n.strip() for n in full_faculty_list]
 
-# ----------------- STREAMLIT -----------------
-st.set_page_config(page_title="Duty Analysis (Blank = No Duty)", layout="wide")
+# ----------------- STREAMLIT CONFIG -----------------
+st.set_page_config(page_title="Duty Analysis (1 / blank)", layout="wide")
 st.title("Exam Duty Analysis (1 = Duty, Blank = No Duty)")
-st.caption("Upload one duty file: Name column + columns with 1 or blank entries.")
+st.caption("Upload one duty file: first column = faculty names, remaining columns = 1 or blank.")
 
 uploaded_file = st.file_uploader(
     "Upload duty file (Excel/CSV)",
@@ -53,92 +53,129 @@ if uploaded_file.name.lower().endswith(".csv"):
 else:
     df = pd.read_excel(uploaded_file)
 
+# Ensure column names are strings and trimmed
 df.columns = [str(c).strip() for c in df.columns]
 
-if "Name" not in df.columns:
-    st.error("File must contain a 'Name' column.")
-    st.stop()
+st.subheader("Raw Uploaded File (First 5 rows)")
+st.dataframe(df.head())
 
+# ----------------- DETECT NAME COLUMN -----------------
+possible_name_cols = ["Name", "NAME", "Faculty", "Faculty Name",
+                      "Invigilator", "Invigilator Name"]
+
+name_col = None
+for c in df.columns:
+    if str(c).strip() in possible_name_cols:
+        name_col = c
+        break
+
+# If no obvious name column found, assume first column
+if name_col is None:
+    name_col = df.columns[0]
+    st.info(f"No explicit 'Name' column found. Using first column as Name: **{name_col}**")
+
+# Rename to standard "Name"
+if name_col != "Name":
+    df = df.rename(columns={name_col: "Name"})
+
+# Clean Name values
 df["Name"] = df["Name"].astype(str).str.strip()
 
-# ----------------- CONVERT BLANKS TO 0, '1' TO 1 -----------------
-date_cols = [c for c in df.columns if c != "Name"]
+# ----------------- DUTY COLUMNS -----------------
+duty_cols = [c for c in df.columns if c != "Name"]
 
-df[date_cols] = df[date_cols].applymap(lambda x:
-    1 if str(x).strip() == "1" else 0
-)
+if not duty_cols:
+    st.error("No duty columns found (only 'Name' present). Please add date/session columns.")
+    st.stop()
 
-st.subheader("Cleaned Duty File")
+# Convert duty columns: "1" -> 1, others (blank, 0, NaN, text) -> 0
+def duty_value(x):
+    s = str(x).strip()
+    return 1 if s == "1" else 0
+
+df[duty_cols] = df[duty_cols].applymap(duty_value)
+
+st.subheader("Cleaned Duty Matrix (1 = Duty, 0 = No Duty)")
 st.dataframe(df)
 
-# ----------------- COMPUTE TOTAL DUTY -----------------
-df["TotalDuty"] = df[date_cols].sum(axis=1)
+# ----------------- TOTAL DUTY CALC -----------------
+df["TotalDuty"] = df[duty_cols].sum(axis=1)
 
-st.success(f"Total faculty entries processed: {len(df)}")
+st.success(f"Total faculty rows processed: {len(df)}")
 
-# ----------------- SUMMARY TABLE -----------------
-st.subheader("Faculty Duty Summary")
+# ----------------- BASIC SUMMARY -----------------
+st.subheader("Faculty-wise Duty Summary")
 faculty_summary = df[["Name", "TotalDuty"]].sort_values("TotalDuty", ascending=False)
 st.dataframe(faculty_summary)
 
 # ----------------- CHARTS -----------------
 st.subheader("Graphical Analysis")
+total_duty_sum = faculty_summary["TotalDuty"].sum()
 
 col1, col2 = st.columns(2)
 
 with col1:
-    st.markdown("### Bar Chart – Duty Count")
-    fig1, ax1 = plt.subplots(figsize=(6, 4))
-    faculty_summary.set_index("Name")["TotalDuty"].plot(kind="bar", ax=ax1)
-    ax1.set_ylabel("Duty Count")
-    ax1.set_xticklabels(ax1.get_xticklabels(), rotation=90)
-    fig1.tight_layout()
-    st.pyplot(fig1)
+    st.markdown("### Bar Chart – Duty Count per Faculty")
+    if total_duty_sum == 0:
+        st.info("All TotalDuty values are 0 – no duties assigned in this file.")
+    else:
+        fig1, ax1 = plt.subplots(figsize=(6, 4))
+        faculty_summary.set_index("Name")["TotalDuty"].plot(kind="bar", ax=ax1)
+        ax1.set_ylabel("Duty Count")
+        ax1.set_xticklabels(ax1.get_xticklabels(), rotation=90)
+        ax1.set_title("Duty Distribution")
+        fig1.tight_layout()
+        st.pyplot(fig1)
 
 with col2:
     st.markdown("### Pie Chart – Duty Share")
-    fig2, ax2 = plt.subplots(figsize=(6, 4))
-    ax2.pie(
-        faculty_summary["TotalDuty"],
-        labels=faculty_summary["Name"],
-        autopct="%1.1f%%"
-    )
-    ax2.set_title("Duty Share %")
-    st.pyplot(fig2)
+    if total_duty_sum == 0:
+        st.info("Cannot draw pie chart – all TotalDuty values are 0.")
+    else:
+        fig2, ax2 = plt.subplots(figsize=(6, 4))
+        ax2.pie(
+            faculty_summary["TotalDuty"],
+            labels=faculty_summary["Name"],
+            autopct="%1.1f%%"
+        )
+        ax2.set_title("Duty Share (%)")
+        fig2.tight_layout()
+        st.pyplot(fig2)
 
-# ----------------- ADVANCED ANALYSIS -----------------
+# ----------------- ADVANCED ANALYSIS WITH MASTER LIST -----------------
 st.subheader("Advanced Analysis (Using Master Faculty List)")
 
 roster_df = pd.DataFrame({"Name": full_faculty_list})
+roster_df["Name"] = roster_df["Name"].astype(str).str.strip()
 
 merged = roster_df.merge(faculty_summary, on="Name", how="left")
-merged["TotalDuty"] = merged["TotalDuty"].fillna(0)
-
+merged["TotalDuty"] = merged["TotalDuty"].fillna(0).astype(int)
 merged = merged.sort_values("TotalDuty")
 
-# Zero-duty list
+# 1. Faculty with zero duties
+st.markdown("### Faculty with ZERO Duties (From Master List)")
 zero_duty = merged[merged["TotalDuty"] == 0]
-st.markdown("### Faculty with ZERO Duties")
 st.dataframe(zero_duty)
 
-# Min duties
+# 2. Minimum non-zero duty
 non_zero = merged[merged["TotalDuty"] > 0]
-if not non_zero.empty:
-    min_duty = non_zero["TotalDuty"].min()
-    st.info(f"Minimum duties assigned: {min_duty}")
-    st.dataframe(merged[merged["TotalDuty"] == min_duty])
-else:
+st.markdown("### Faculty with MINIMUM Non-zero Duties")
+if non_zero.empty:
     st.info("No faculty has non-zero duties.")
+else:
+    min_duty = non_zero["TotalDuty"].min()
+    st.info(f"Minimum non-zero duties: **{min_duty}**")
+    st.dataframe(merged[merged["TotalDuty"] == min_duty])
 
-# Max duties
+# 3. Maximum duty
+st.markdown("### Faculty with MAXIMUM Duties")
 max_duty = merged["TotalDuty"].max()
-st.success(f"Maximum duties assigned: {max_duty}")
+st.success(f"Maximum duties: **{max_duty}**")
 st.dataframe(merged[merged["TotalDuty"] == max_duty])
 
-# Full distribution
-st.markdown("### Full Duty Distribution")
+# 4. Full distribution
+st.markdown("### Full Duty Distribution (Master List)")
 st.dataframe(merged)
 
-# Distribution bar chart
-st.markdown("### Duty Count Distribution (All Faculty)")
+st.markdown("### Overall Duty Distribution – Bar Chart (Master List)")
 st.bar_chart(merged.set_index("Name")["TotalDuty"])

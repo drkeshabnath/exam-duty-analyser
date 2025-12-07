@@ -33,6 +33,9 @@ full_faculty_list = [
     "Dr. Jagannath Bhuyan", "Dr. Bobby D. Langthasa"
 ]
 
+# Pre-normalise master names (strip spaces)
+full_faculty_list = [n.strip() for n in full_faculty_list]
+
 # ----------------- BASIC CONFIG -----------------
 st.set_page_config(
     page_title="Exam Duty Analyser",
@@ -93,6 +96,9 @@ for idx, up_file in enumerate(uploaded_files):
         )
         st.stop()
 
+    # NORMALISE NAMES: remove extra spaces etc.
+    df["Name"] = df["Name"].astype(str).str.strip()
+
     st.write("Preview:")
     st.dataframe(df.head())
 
@@ -115,6 +121,11 @@ for idx, up_file in enumerate(uploaded_files):
 
 # ----------------- COMBINE ALL FILES -----------------
 master = pd.concat(all_long_dfs, ignore_index=True)
+
+# Normalise again just in case
+master["Name"] = master["Name"].astype(str).str.strip()
+master["Date"] = master["Date"].astype(str).str.strip()
+
 st.success(f"Combined rows (faculty–date duty assignments) from all files: **{len(master)}**")
 
 # ----------------- FILTERS -----------------
@@ -224,60 +235,66 @@ st.dataframe(fair_stats)
 # ----------------- ADVANCED ANALYSIS -----------------
 st.subheader("Step 6: Advanced Duty Load Analysis (Using Full Faculty List)")
 
-# Total duty per faculty across the selected semesters
+# Total duty per faculty across the SELECTED semesters
 faculty_duty_total = (
     filtered.groupby("Name")["DutyCount"]
     .sum()
     .reset_index()
 )
+faculty_duty_total["Name"] = faculty_duty_total["Name"].astype(str).str.strip()
 
-# Full roster → DataFrame
-faculty_master = pd.DataFrame({"Name": full_faculty_list})
+# Master roster DataFrame
+roster_df = pd.DataFrame({"Name": full_faculty_list})
+roster_df["Name"] = roster_df["Name"].astype(str).str.strip()
 
-# Merge to include faculty with zero duty
-merged = faculty_master.merge(faculty_duty_total, on="Name", how="left")
-merged["DutyCount"] = merged["DutyCount"].fillna(0)
+# Merge roster with duty totals to find zero-duty people
+roster_with_duty = roster_df.merge(
+    faculty_duty_total,
+    on="Name",
+    how="left"
+)
+roster_with_duty["DutyCount"] = roster_with_duty["DutyCount"].fillna(0)
 
 # Sort by duty count (ascending)
-merged = merged.sort_values("DutyCount", ascending=True).reset_index(drop=True)
+roster_with_duty = roster_with_duty.sort_values("DutyCount", ascending=True).reset_index(drop=True)
 
 # Faculty with zero duty
-zero_duty = merged[merged["DutyCount"] == 0]
+zero_duty = roster_with_duty[roster_with_duty["DutyCount"] == 0]
 
-# Minimum > 0 duty
-if (merged["DutyCount"] > 0).any():
-    min_duty = merged[merged["DutyCount"] > 0]["DutyCount"].min()
-    min_duty_faculty = merged[merged["DutyCount"] == min_duty]
+# Minimum > 0 duty FROM ROSTER
+if (roster_with_duty["DutyCount"] > 0).any():
+    min_duty = roster_with_duty[roster_with_duty["DutyCount"] > 0]["DutyCount"].min()
+    min_duty_faculty = roster_with_duty[roster_with_duty["DutyCount"] == min_duty]
 else:
     min_duty = 0
-    min_duty_faculty = pd.DataFrame(columns=merged.columns)
+    min_duty_faculty = pd.DataFrame(columns=roster_with_duty.columns)
 
-# Maximum duty
-max_duty = merged["DutyCount"].max()
-max_duty_faculty = merged[merged["DutyCount"] == max_duty]
+# Maximum duty from roster
+max_duty = roster_with_duty["DutyCount"].max()
+max_duty_faculty = roster_with_duty[roster_with_duty["DutyCount"] == max_duty]
 
 # ----- Display advanced results -----
-st.markdown("### 6.1 Faculty Not Assigned Any Duty")
+st.markdown("### 6.1 Faculty Not Assigned Any Duty (from master list)")
 if zero_duty.empty:
     st.success("✅ All faculty in the master list received at least one duty in the selected semesters.")
 else:
     st.error("❗ The following faculty received **zero exam duties** in the selected semesters:")
     st.dataframe(zero_duty)
 
-st.markdown("### 6.2 Faculty With Minimum (Non-zero) Duties")
+st.markdown("### 6.2 Faculty With Minimum (Non-zero) Duties (from master list)")
 if min_duty == 0 and min_duty_faculty.empty:
     st.info("No faculty with non-zero duties found (check input files).")
 else:
     st.info(f"Minimum non-zero duties assigned: **{min_duty}**")
     st.dataframe(min_duty_faculty)
 
-st.markdown("### 6.3 Faculty With Maximum Duties")
-st.success(f"Maximum duties assigned to a single faculty: **{max_duty}**")
+st.markdown("### 6.3 Faculty With Maximum Duties (from master list)")
+st.success(f"Maximum duties assigned to a single faculty (from master list): **{max_duty}**")
 st.dataframe(max_duty_faculty)
 
-st.markdown("### 6.4 Overall Duty Distribution (All Faculty)")
+st.markdown("### 6.4 Overall Duty Distribution (Master list only)")
 st.write("Duty count for every faculty in the master list (including those with zero duties):")
-st.dataframe(merged)
+st.dataframe(roster_with_duty)
 
-st.markdown("#### Bar Chart – Duty Distribution for All Faculty (Selected Semesters)")
-st.bar_chart(merged.set_index("Name")["DutyCount"])
+st.markdown("#### Bar Chart – Duty Distribution for All Faculty in Master List")
+st.bar_chart(roster_with_duty.set_index("Name")["DutyCount"])

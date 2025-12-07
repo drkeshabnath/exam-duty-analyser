@@ -1,7 +1,10 @@
+import os
+import difflib
+
 import pandas as pd
 import matplotlib.pyplot as plt
 import streamlit as st
-import difflib
+
 
 # ----------------- MASTER FACULTY LIST -----------------
 full_faculty_list = [

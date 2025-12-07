@@ -296,7 +296,7 @@ duty_assigned_count = total_faculty - no_duty_count
 
 summary_df = pd.DataFrame({
     "Metric": [
-        "Total Faculty in Master List",
+        "Total Faculty",
         "Faculty Assigned No Duty",
         "Faculty Assigned Duty",
         "Percentage Assigned Duty",

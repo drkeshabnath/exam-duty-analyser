@@ -238,7 +238,7 @@ with col2:
     if total_duty_sum == 0:
         st.info("Cannot draw pie chart – all TotalDuty values are 0.")
     else:
-        fig2, ax2 = plt.subplots(figsize=(8, 8))
+        fig2, ax2 = plt.subplots(figsize=(6, 4))
 
 ax2.pie(
     canonical_summary["TotalDuty"],

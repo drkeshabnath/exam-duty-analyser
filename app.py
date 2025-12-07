@@ -111,10 +111,48 @@ if not uploaded_file:
     st.stop()
 
 # ----------------- READ FILE -----------------
-if uploaded_file.name.lower().endswith(".csv"):
-    df = pd.read_csv(uploaded_file)
+#if uploaded_file.name.lower().endswith(".csv"):
+#    df = pd.read_csv(uploaded_file)
+#else:
+#    df = pd.read_excel(uploaded_file)
+
+########################################################################
+
+DATA_FOLDER = "duty_files"
+
+if not os.path.exists(DATA_FOLDER):
+    st.error("❌ 'duty_files' folder not found. Create it and add .xlsx/.csv files.")
+    st.stop()
+
+available_files = [
+    f for f in os.listdir(DATA_FOLDER)
+    if f.lower().endswith(".xlsx") or f.lower().endswith(".xls") or f.lower().endswith(".csv")
+]
+
+st.subheader("Step 1: Select a Duty File")
+
+if not available_files:
+    st.error("❌ No .xlsx/.xls/.csv files found in 'duty_files/'.")
+    st.stop()
+
+selected_file = st.selectbox("Choose a preloaded duty file:", available_files)
+file_path = os.path.join(DATA_FOLDER, selected_file)
+
+st.success(f"📄 Loading: {selected_file}")
+
+# Read selected file
+if selected_file.lower().endswith(".csv"):
+    df = pd.read_csv(file_path)
 else:
-    df = pd.read_excel(uploaded_file)
+    df = pd.read_excel(file_path)
+
+
+
+
+
+
+
+###################################################################
 
 # Ensure column names are strings and trimmed
 df.columns = [str(c).strip() for c in df.columns]

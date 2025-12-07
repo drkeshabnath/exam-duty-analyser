@@ -215,7 +215,7 @@ canonical_summary = (
 st.dataframe(canonical_summary)
 
 # ----------------- CHARTS (CANONICAL) -----------------
-st.subheader("Graphical Analysis")
+#st.subheader("Graphical Analysis")
 total_duty_sum = canonical_summary["TotalDuty"].sum()
 
 col1, col2 = st.columns(2)
@@ -250,7 +250,7 @@ with col2:
         st.pyplot(fig2)
 
 # ----------------- ADVANCED ANALYSIS WITH MASTER LIST -----------------
-st.subheader("Advanced Analysis")
+#st.subheader("Advanced Analysis")
 
 roster_df = pd.DataFrame({"Name": full_faculty_list})
 roster_df["Name"] = roster_df["Name"].astype(str).str.strip()

@@ -105,13 +105,13 @@ st.set_page_config(page_title="Duty Analysis with Fuzzy Name Matching", layout="
 st.title("Exam Duty Analysis")
 st.caption("Upload one duty file: first column = faculty names (approx), other columns = duty sessions (1 / blank).")
 
-uploaded_file = st.file_uploader(
-    "Upload duty file (Excel/CSV)",
-    type=["xlsx", "xls", "csv"]
-)
+#uploaded_file = st.file_uploader(
+#    "Upload duty file (Excel/CSV)",
+#    type=["xlsx", "xls", "csv"]
+#)
 
-if not uploaded_file:
-    st.stop()
+#if not uploaded_file:
+#    st.stop()
 
 # ----------------- READ FILE -----------------
 #if uploaded_file.name.lower().endswith(".csv"):

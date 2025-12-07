@@ -35,9 +35,9 @@ full_faculty_list = [
 full_faculty_list = [n.strip() for n in full_faculty_list]
 
 # ----------------- STREAMLIT CONFIG -----------------
-st.set_page_config(page_title="Duty Analysis (1 / blank)", layout="wide")
-st.title("Exam Duty Analysis (1 = Duty, Blank = No Duty)")
-st.caption("Upload one duty file: first column = faculty names, remaining columns = 1 or blank.")
+st.set_page_config(page_title="Duty Analysis (1 / tick / blank)", layout="wide")
+st.title("Exam Duty Analysis (Any non-empty = Duty)")
+st.caption("Upload one duty file: first column = faculty names, remaining columns = duty marks (1, ✓, etc.).")
 
 uploaded_file = st.file_uploader(
     "Upload duty file (Excel/CSV)",
@@ -88,10 +88,19 @@ if not duty_cols:
     st.error("No duty columns found (only 'Name' present). Please add date/session columns.")
     st.stop()
 
-# Convert duty columns: "1" -> 1, others (blank, 0, NaN, text) -> 0
+# For debugging: show distinct raw values from first duty column
+st.write("Unique raw values in first duty column:", duty_cols[0])
+st.write(df[duty_cols[0]].astype(str).unique())
+
+# Convert duty columns:
+# any non-empty, non-zero, non-NaN value -> 1
+# empty / 0 / NaN / 'na' / 'none' -> 0
 def duty_value(x):
     s = str(x).strip()
-    return 1 if s == "1" else 0
+    if s == "" or s.lower() in ["0", "nan", "na", "none"]:
+        return 0
+    else:
+        return 1
 
 df[duty_cols] = df[duty_cols].applymap(duty_value)
 

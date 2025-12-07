@@ -164,7 +164,7 @@ df["TotalDuty"] = df[duty_cols].sum(axis=1)
 st.success(f"Total faculty rows processed: {len(df)}")
 
 # ----------------- FUZZY MAP UPLOADED NAMES TO MASTER LIST -----------------
-st.subheader("Name Matching to Master Faculty List")
+#st.subheader("Name Matching to Master Faculty List")
 
 mapped_names = []
 match_scores = []
@@ -180,7 +180,7 @@ df["MappedName"] = mapped_names
 df["MatchScore"] = match_scores
 df["MatchStrategy"] = strategies
 
-st.markdown("#### Sample of Name Mapping")
+st.markdown("#### Faculty Name Mapping")
 st.dataframe(df[["RawName", "MappedName", "MatchScore", "MatchStrategy", "TotalDuty"]].head(15))
 
 # Rows where no good match found

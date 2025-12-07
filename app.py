@@ -238,43 +238,16 @@ with col2:
     if total_duty_sum == 0:
         st.info("Cannot draw pie chart – all TotalDuty values are 0.")
     else:
-        fig2, ax2 = plt.subplots(figsize=(10, 10))
-
-wedges, texts, autotexts = ax2.pie(
-    canonical_summary["TotalDuty"],
-    labels=canonical_summary["Name"],
-    autopct="%1.1f%%",
-    startangle=90,          # rotate entire chart so first label at top
-    labeldistance=1.15,     # push labels outward
-    pctdistance=0.75,       # keep percentage inside
-    wedgeprops=dict(width=0.6),
-    rotatelabels=True       # <<< KEY FEATURE TO AVOID OVERLAP
-)
-
-# Improve readability
-for t in texts:
-    t.set_rotation( t.get_rotation() + 90 )   # ensure text faces outward
-    t.set_fontsize(8)
-
-for a in autotexts:
-    a.set_fontsize(8)
-
-ax2.set_title("Duty Share (%) – Canonical (Angle-Adjusted)", fontsize=14)
-st.pyplot(fig2)
-
-
-
-
-        
-       # fig2, ax2 = plt.subplots(figsize=(6, 4))
-       # ax2.pie(
-        #    canonical_summary["TotalDuty"],
-        #    labels=canonical_summary["Name"],
-         #   autopct="%1.1f%%"
-        #)
-        #ax2.set_title("Duty Share (%) – Canonical")
-        #fig2.tight_layout()
-        #st.pyplot(fig2)
+    
+        fig2, ax2 = plt.subplots(figsize=(6, 4))
+        ax2.pie(
+            canonical_summary["TotalDuty"],
+            labels=canonical_summary["Name"],
+            autopct="%1.1f%%"
+        )
+        ax2.set_title("Duty Share (%) – Canonical")
+        fig2.tight_layout()
+        st.pyplot(fig2)
 
 # ----------------- ADVANCED ANALYSIS WITH MASTER LIST -----------------
 st.subheader("Advanced Analysis")

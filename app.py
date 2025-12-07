@@ -40,7 +40,6 @@ st.set_page_config(page_title="Single File Duty Analysis", layout="wide")
 st.title("Exam Duty Analysis (Single File Version)")
 st.caption("Upload one duty file (Name + date/session columns).")
 
-
 uploaded_file = st.file_uploader(
     "Upload duty file (Excel/CSV)",
     type=["xlsx", "xls", "csv"]
@@ -49,19 +48,24 @@ uploaded_file = st.file_uploader(
 if not uploaded_file:
     st.stop()
 
-
 # ----------------- READ FILE -----------------
 if uploaded_file.name.lower().endswith(".csv"):
     df = pd.read_csv(uploaded_file)
 else:
     df = pd.read_excel(uploaded_file)
 
-df.columns = [c.strip() for c in df.columns]
-df["Name"] = df["Name"].astype(str).strip()
+# FIX: ensure all column names are strings before strip
+df.columns = [str(c).strip() for c in df.columns]
+
+if "Name" not in df.columns:
+    st.error("`Name` column not found. Please ensure the first column header is exactly 'Name'.")
+    st.stop()
+
+# FIX: correct way to strip spaces in the Name column
+df["Name"] = df["Name"].astype(str).str.strip()
 
 st.subheader("Uploaded File Preview")
 st.dataframe(df.head())
-
 
 # ----------------- TRANSFORM INTO LONG FORMAT -----------------
 date_cols = [c for c in df.columns if c != "Name"]
@@ -79,7 +83,6 @@ long_df["DutyCount"] = 1
 
 st.success(f"Total duty assignments found: {len(long_df)}")
 
-
 # ----------------- SUMMARY -----------------
 st.subheader("Faculty-wise Duty Summary")
 
@@ -91,7 +94,6 @@ faculty_summary = (
 )
 
 st.dataframe(faculty_summary)
-
 
 # ----------------- CHARTS -----------------
 st.subheader("Graphical Analysis")
@@ -105,6 +107,7 @@ with col1:
     ax1.set_title("Duty Distribution")
     ax1.set_ylabel("Duties")
     ax1.set_xticklabels(ax1.get_xticklabels(), rotation=90)
+    fig1.tight_layout()
     st.pyplot(fig1)
 
 with col2:
@@ -116,8 +119,8 @@ with col2:
         autopct="%1.1f%%"
     )
     ax2.set_title("Percentage Share of Duties")
+    fig2.tight_layout()
     st.pyplot(fig2)
-
 
 # ----------------- ADVANCED ANALYSIS -----------------
 st.subheader("Advanced Analysis (Using Master Faculty List)")
@@ -128,7 +131,6 @@ merged = roster_df.merge(faculty_summary, on="Name", how="left")
 merged["DutyCount"] = merged["DutyCount"].fillna(0)
 merged = merged.sort_values("DutyCount")
 
-
 # Zero-Duty
 zero_duty = merged[merged["DutyCount"] == 0]
 st.markdown("### Faculty with **Zero** Duties")
@@ -137,7 +139,6 @@ if zero_duty.empty:
 else:
     st.error("These faculty received ZERO duties:")
     st.dataframe(zero_duty)
-
 
 # Minimum duty (non-zero)
 non_zero = merged[merged["DutyCount"] > 0]
@@ -150,14 +151,12 @@ if not non_zero.empty:
 else:
     st.info("No faculty had non-zero duties.")
 
-
 # Maximum duty
 max_duty = merged["DutyCount"].max()
 max_list = merged[merged["DutyCount"] == max_duty]
 st.markdown("### Faculty with Maximum Duties")
 st.success(f"Maximum duties: **{max_duty}**")
 st.dataframe(max_list)
-
 
 # Full Distribution
 st.markdown("### Full Duty Distribution (Master List)")

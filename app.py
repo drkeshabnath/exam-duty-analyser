@@ -238,15 +238,39 @@ with col2:
     if total_duty_sum == 0:
         st.info("Cannot draw pie chart – all TotalDuty values are 0.")
     else:
-        fig2, ax2 = plt.subplots(figsize=(6, 4))
-        ax2.pie(
-            canonical_summary["TotalDuty"],
-            labels=canonical_summary["Name"],
-            autopct="%1.1f%%"
-        )
-        ax2.set_title("Duty Share (%) – Canonical")
-        fig2.tight_layout()
-        st.pyplot(fig2)
+        fig2, ax2 = plt.subplots(figsize=(8, 8))
+
+ax2.pie(
+    canonical_summary["TotalDuty"],
+    labels=None,                # remove labels from pie itself
+    autopct="%1.1f%%",
+    pctdistance=0.85,           # move % slightly outward
+)
+
+# Add labels as legend (NO OVERLAP)
+ax2.legend(
+    canonical_summary["Name"],
+    title="Faculty",
+    loc="center left",
+    bbox_to_anchor=(1, 0.5),
+    fontsize=8
+)
+
+ax2.set_title("Duty Share (%) – Canonical")
+st.pyplot(fig2)
+
+
+
+        
+       # fig2, ax2 = plt.subplots(figsize=(6, 4))
+       # ax2.pie(
+        #    canonical_summary["TotalDuty"],
+        #    labels=canonical_summary["Name"],
+         #   autopct="%1.1f%%"
+        #)
+        #ax2.set_title("Duty Share (%) – Canonical")
+        #fig2.tight_layout()
+        #st.pyplot(fig2)
 
 # ----------------- ADVANCED ANALYSIS WITH MASTER LIST -----------------
 st.subheader("Advanced Analysis")

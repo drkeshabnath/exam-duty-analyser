@@ -99,7 +99,7 @@ def fuzzy_map_name(raw_name: str, cutoff: float = 0.75):
 
 # ----------------- STREAMLIT CONFIG -----------------
 st.set_page_config(page_title="Duty Analysis with Fuzzy Name Matching", layout="wide")
-st.title("Exam Duty Analysis (1 = Duty, Blank = No Duty)")
+st.title("Exam Duty Analysis")
 st.caption("Upload one duty file: first column = faculty names (approx), other columns = duty sessions (1 / blank).")
 
 uploaded_file = st.file_uploader(

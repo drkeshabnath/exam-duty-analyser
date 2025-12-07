@@ -190,7 +190,7 @@ if not unmatched.empty:
     st.dataframe(unmatched[["RawName", "TotalDuty", "MatchScore", "MatchStrategy"]])
 
 # ----------------- FACULTY-WISE SUMMARY (BY RAW NAME) -----------------
-st.subheader("Faculty-wise Duty Summary (as per Uploaded Names)")
+st.subheader("Faculty-wise Duty Summary")
 faculty_summary_raw = (
     df.groupby(["RawName"])["TotalDuty"]
     .sum()
@@ -200,7 +200,7 @@ faculty_summary_raw = (
 st.dataframe(faculty_summary_raw)
 
 # ----------------- CANONICAL SUMMARY (BY MAPPED MASTER NAME) -----------------
-st.subheader("Canonical Duty Summary (Mapped to Master Faculty List)")
+st.subheader("Canonical Duty Summary")
 
 # Only keep rows that got mapped to a master name
 mapped_df = df[~df["MappedName"].isna()].copy()
@@ -215,13 +215,13 @@ canonical_summary = (
 st.dataframe(canonical_summary)
 
 # ----------------- CHARTS (CANONICAL) -----------------
-st.subheader("Graphical Analysis (Using Canonical Names)")
+st.subheader("Graphical Analysis")
 total_duty_sum = canonical_summary["TotalDuty"].sum()
 
 col1, col2 = st.columns(2)
 
 with col1:
-    st.markdown("### Bar Chart – Duty Count per Faculty (Canonical)")
+    st.markdown("### Duty Count per Faculty (Canonical)")
     if total_duty_sum == 0:
         st.info("All TotalDuty values are 0 – no duties assigned (after mapping).")
     else:
@@ -234,7 +234,7 @@ with col1:
         st.pyplot(fig1)
 
 with col2:
-    st.markdown("### Pie Chart – Duty Share (Canonical)")
+    st.markdown("### Duty Share (Canonical)")
     if total_duty_sum == 0:
         st.info("Cannot draw pie chart – all TotalDuty values are 0.")
     else:
@@ -249,7 +249,7 @@ with col2:
         st.pyplot(fig2)
 
 # ----------------- ADVANCED ANALYSIS WITH MASTER LIST -----------------
-st.subheader("Advanced Analysis (Against Master Faculty List)")
+st.subheader("Advanced Analysis")
 
 roster_df = pd.DataFrame({"Name": full_faculty_list})
 roster_df["Name"] = roster_df["Name"].astype(str).str.strip()
@@ -260,7 +260,7 @@ merged["TotalDuty"] = merged["TotalDuty"].fillna(0).astype(int)
 merged = merged.sort_values("TotalDuty")
 
 # 1. Faculty with zero duties
-st.markdown("### Faculty with ZERO Duties (From Master List)")
+st.markdown("### Faculty with ZERO Duties")
 zero_duty = merged[merged["TotalDuty"] == 0]
 st.dataframe(zero_duty)
 
@@ -281,8 +281,8 @@ st.success(f"Maximum duties: **{max_duty}**")
 st.dataframe(merged[merged["TotalDuty"] == max_duty])
 
 # 4. Full distribution
-st.markdown("### Full Duty Distribution (Master List)")
+st.markdown("### Full Duty Distribution")
 st.dataframe(merged)
 
-st.markdown("### Overall Duty Distribution – Bar Chart (Master List)")
+st.markdown("### Overall Duty Distribution")
 st.bar_chart(merged.set_index("Name")["TotalDuty"])

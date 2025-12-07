@@ -1,6 +1,7 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import streamlit as st
+import difflib
 
 # ----------------- MASTER FACULTY LIST -----------------
 full_faculty_list = [
@@ -34,10 +35,72 @@ full_faculty_list = [
 ]
 full_faculty_list = [n.strip() for n in full_faculty_list]
 
+# ----------------- NAME NORMALISATION & MATCHING -----------------
+
+TITLE_TOKENS = {"dr", "mr", "mrs", "ms", "prof", "sir", "smt", "kumari"}
+
+def normalize_name(raw: str) -> str:
+    """Lowercase, remove titles and extra spaces to get a comparable form."""
+    if not isinstance(raw, str):
+        raw = str(raw)
+    raw = raw.replace(".", " ")
+    tokens = [t for t in raw.lower().split() if t not in TITLE_TOKENS]
+    return " ".join(tokens)
+
+# Precompute normalized master names
+master_df = pd.DataFrame({"MasterName": full_faculty_list})
+master_df["MasterNorm"] = master_df["MasterName"].apply(normalize_name)
+master_norm_list = master_df["MasterNorm"].tolist()
+
+def fuzzy_map_name(raw_name: str, cutoff: float = 0.75):
+    """
+    Map a raw uploaded name to the closest master faculty name.
+    Returns (best_name, score, strategy) or (None, 0, 'no_match').
+    """
+    if not isinstance(raw_name, str):
+        raw_name = str(raw_name)
+    raw_clean = raw_name.strip()
+    if raw_clean == "":
+        return None, 0.0, "empty"
+
+    norm = normalize_name(raw_clean)
+
+    # 1. Exact match on raw (case-insensitive)
+    for master in full_faculty_list:
+        if master.lower().strip() == raw_clean.lower():
+            return master, 1.0, "exact_raw"
+
+    # 2. Exact match on normalized
+    exact_norm = master_df[master_df["MasterNorm"] == norm]
+    if not exact_norm.empty:
+        return exact_norm.iloc[0]["MasterName"], 1.0, "exact_norm"
+
+    # 3. Fuzzy match on normalized using difflib
+    if master_norm_list:
+        best_norm = difflib.get_close_matches(norm, master_norm_list, n=1, cutoff=0.0)
+        if best_norm:
+            candidate_norm = best_norm[0]
+            score = difflib.SequenceMatcher(None, norm, candidate_norm).ratio()
+            if score >= cutoff:
+                candidate_row = master_df[master_df["MasterNorm"] == candidate_norm].iloc[0]
+                return candidate_row["MasterName"], score, "fuzzy"
+
+    # 4. Try last-name-based heuristic if fuzzy score was low
+    tokens = norm.split()
+    if len(tokens) >= 1:
+        last = tokens[-1]
+        # candidates where last name appears
+        candidates = master_df[master_df["MasterNorm"].str.contains(last)]
+        if len(candidates) == 1:
+            return candidates.iloc[0]["MasterName"], 0.7, "lastname_unique"
+
+    # 5. No good match
+    return None, 0.0, "no_match"
+
 # ----------------- STREAMLIT CONFIG -----------------
-st.set_page_config(page_title="Duty Analysis (1 / tick / blank)", layout="wide")
-st.title("Exam Duty Analysis (Any non-empty = Duty)")
-st.caption("Upload one duty file: first column = faculty names, remaining columns = duty marks (1, ✓, etc.).")
+st.set_page_config(page_title="Duty Analysis with Fuzzy Name Matching", layout="wide")
+st.title("Exam Duty Analysis (1 = Duty, Blank = No Duty)")
+st.caption("Upload one duty file: first column = faculty names (approx), other columns = duty sessions (1 / blank).")
 
 uploaded_file = st.file_uploader(
     "Upload duty file (Excel/CSV)",
@@ -60,8 +123,10 @@ st.subheader("Raw Uploaded File (First 5 rows)")
 st.dataframe(df.head())
 
 # ----------------- DETECT NAME COLUMN -----------------
-possible_name_cols = ["Name", "NAME", "Faculty", "Faculty Name",
-                      "Invigilator", "Invigilator Name"]
+possible_name_cols = [
+    "Name", "NAME", "Faculty", "Faculty Name",
+    "Invigilator", "Invigilator Name"
+]
 
 name_col = None
 for c in df.columns:
@@ -69,95 +134,128 @@ for c in df.columns:
         name_col = c
         break
 
-# If no obvious name column found, assume first column
 if name_col is None:
     name_col = df.columns[0]
-    st.info(f"No explicit 'Name' column found. Using first column as Name: **{name_col}**")
+    st.info(f"No standard 'Name' column found. Using first column as Name: **{name_col}**")
 
-# Rename to standard "Name"
-if name_col != "Name":
-    df = df.rename(columns={name_col: "Name"})
+# Rename to RawName
+if name_col != "RawName":
+    df = df.rename(columns={name_col: "RawName"})
 
-# Clean Name values
-df["Name"] = df["Name"].astype(str).str.strip()
+df["RawName"] = df["RawName"].astype(str).str.strip()
 
 # ----------------- DUTY COLUMNS -----------------
-duty_cols = [c for c in df.columns if c != "Name"]
+duty_cols = [c for c in df.columns if c != "RawName"]
 
 if not duty_cols:
-    st.error("No duty columns found (only 'Name' present). Please add date/session columns.")
+    st.error("No duty columns found (only name column present). Please add date/session columns.")
     st.stop()
 
-# For debugging: show distinct raw values from first duty column
-st.write("Unique raw values in first duty column:", duty_cols[0])
-st.write(df[duty_cols[0]].astype(str).unique())
-
-# Convert duty columns:
-# any non-empty, non-zero, non-NaN value -> 1
-# empty / 0 / NaN / 'na' / 'none' -> 0
-def duty_value(x):
-    s = str(x).strip()
-    if s == "" or s.lower() in ["0", "nan", "na", "none"]:
-        return 0
-    else:
-        return 1
-
-df[duty_cols] = df[duty_cols].applymap(duty_value)
+# Convert duty columns to numeric, then >0 => 1 else 0
+df[duty_cols] = df[duty_cols].apply(lambda col: pd.to_numeric(col, errors="coerce"))
+df[duty_cols] = df[duty_cols].fillna(0)
+df[duty_cols] = (df[duty_cols] > 0).astype(int)
 
 st.subheader("Cleaned Duty Matrix (1 = Duty, 0 = No Duty)")
 st.dataframe(df)
 
-# ----------------- TOTAL DUTY CALC -----------------
+# ----------------- TOTAL DUTY PER RAW NAME -----------------
 df["TotalDuty"] = df[duty_cols].sum(axis=1)
-
 st.success(f"Total faculty rows processed: {len(df)}")
 
-# ----------------- BASIC SUMMARY -----------------
-st.subheader("Faculty-wise Duty Summary")
-faculty_summary = df[["Name", "TotalDuty"]].sort_values("TotalDuty", ascending=False)
-st.dataframe(faculty_summary)
+# ----------------- FUZZY MAP UPLOADED NAMES TO MASTER LIST -----------------
+st.subheader("Name Matching to Master Faculty List")
 
-# ----------------- CHARTS -----------------
-st.subheader("Graphical Analysis")
-total_duty_sum = faculty_summary["TotalDuty"].sum()
+mapped_names = []
+match_scores = []
+strategies = []
+
+for raw in df["RawName"]:
+    best_name, score, strat = fuzzy_map_name(raw)
+    mapped_names.append(best_name)
+    match_scores.append(score)
+    strategies.append(strat)
+
+df["MappedName"] = mapped_names
+df["MatchScore"] = match_scores
+df["MatchStrategy"] = strategies
+
+st.markdown("#### Sample of Name Mapping")
+st.dataframe(df[["RawName", "MappedName", "MatchScore", "MatchStrategy", "TotalDuty"]].head(15))
+
+# Rows where no good match found
+unmatched = df[df["MappedName"].isna()]
+if not unmatched.empty:
+    st.warning("Some names could not be confidently matched to the master faculty list:")
+    st.dataframe(unmatched[["RawName", "TotalDuty", "MatchScore", "MatchStrategy"]])
+
+# ----------------- FACULTY-WISE SUMMARY (BY RAW NAME) -----------------
+st.subheader("Faculty-wise Duty Summary (as per Uploaded Names)")
+faculty_summary_raw = (
+    df.groupby(["RawName"])["TotalDuty"]
+    .sum()
+    .reset_index()
+    .sort_values("TotalDuty", ascending=False)
+)
+st.dataframe(faculty_summary_raw)
+
+# ----------------- CANONICAL SUMMARY (BY MAPPED MASTER NAME) -----------------
+st.subheader("Canonical Duty Summary (Mapped to Master Faculty List)")
+
+# Only keep rows that got mapped to a master name
+mapped_df = df[~df["MappedName"].isna()].copy()
+canonical_summary = (
+    mapped_df.groupby("MappedName")["TotalDuty"]
+    .sum()
+    .reset_index()
+    .sort_values("TotalDuty", ascending=False)
+    .rename(columns={"MappedName": "Name"})
+)
+
+st.dataframe(canonical_summary)
+
+# ----------------- CHARTS (CANONICAL) -----------------
+st.subheader("Graphical Analysis (Using Canonical Names)")
+total_duty_sum = canonical_summary["TotalDuty"].sum()
 
 col1, col2 = st.columns(2)
 
 with col1:
-    st.markdown("### Bar Chart – Duty Count per Faculty")
+    st.markdown("### Bar Chart – Duty Count per Faculty (Canonical)")
     if total_duty_sum == 0:
-        st.info("All TotalDuty values are 0 – no duties assigned in this file.")
+        st.info("All TotalDuty values are 0 – no duties assigned (after mapping).")
     else:
         fig1, ax1 = plt.subplots(figsize=(6, 4))
-        faculty_summary.set_index("Name")["TotalDuty"].plot(kind="bar", ax=ax1)
+        canonical_summary.set_index("Name")["TotalDuty"].plot(kind="bar", ax=ax1)
         ax1.set_ylabel("Duty Count")
         ax1.set_xticklabels(ax1.get_xticklabels(), rotation=90)
-        ax1.set_title("Duty Distribution")
+        ax1.set_title("Duty Distribution (Canonical Names)")
         fig1.tight_layout()
         st.pyplot(fig1)
 
 with col2:
-    st.markdown("### Pie Chart – Duty Share")
+    st.markdown("### Pie Chart – Duty Share (Canonical)")
     if total_duty_sum == 0:
         st.info("Cannot draw pie chart – all TotalDuty values are 0.")
     else:
         fig2, ax2 = plt.subplots(figsize=(6, 4))
         ax2.pie(
-            faculty_summary["TotalDuty"],
-            labels=faculty_summary["Name"],
+            canonical_summary["TotalDuty"],
+            labels=canonical_summary["Name"],
             autopct="%1.1f%%"
         )
-        ax2.set_title("Duty Share (%)")
+        ax2.set_title("Duty Share (%) – Canonical")
         fig2.tight_layout()
         st.pyplot(fig2)
 
 # ----------------- ADVANCED ANALYSIS WITH MASTER LIST -----------------
-st.subheader("Advanced Analysis (Using Master Faculty List)")
+st.subheader("Advanced Analysis (Against Master Faculty List)")
 
 roster_df = pd.DataFrame({"Name": full_faculty_list})
 roster_df["Name"] = roster_df["Name"].astype(str).str.strip()
 
-merged = roster_df.merge(faculty_summary, on="Name", how="left")
+# Merge master list with canonical duty summary
+merged = roster_df.merge(canonical_summary, on="Name", how="left")
 merged["TotalDuty"] = merged["TotalDuty"].fillna(0).astype(int)
 merged = merged.sort_values("TotalDuty")
 

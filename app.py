@@ -238,26 +238,30 @@ with col2:
     if total_duty_sum == 0:
         st.info("Cannot draw pie chart – all TotalDuty values are 0.")
     else:
-        fig2, ax2 = plt.subplots(figsize=(6, 4))
+        fig2, ax2 = plt.subplots(figsize=(10, 10))
 
-ax2.pie(
+wedges, texts, autotexts = ax2.pie(
     canonical_summary["TotalDuty"],
-    labels=None,                # remove labels from pie itself
+    labels=canonical_summary["Name"],
     autopct="%1.1f%%",
-    pctdistance=0.85,           # move % slightly outward
+    startangle=90,          # rotate entire chart so first label at top
+    labeldistance=1.15,     # push labels outward
+    pctdistance=0.75,       # keep percentage inside
+    wedgeprops=dict(width=0.6),
+    rotatelabels=True       # <<< KEY FEATURE TO AVOID OVERLAP
 )
 
-# Add labels as legend (NO OVERLAP)
-ax2.legend(
-    canonical_summary["Name"],
-    title="Faculty",
-    loc="center left",
-    bbox_to_anchor=(1, 0.5),
-    fontsize=8
-)
+# Improve readability
+for t in texts:
+    t.set_rotation( t.get_rotation() + 90 )   # ensure text faces outward
+    t.set_fontsize(8)
 
-ax2.set_title("Duty Share (%) – Canonical")
+for a in autotexts:
+    a.set_fontsize(8)
+
+ax2.set_title("Duty Share (%) – Canonical (Angle-Adjusted)", fontsize=14)
 st.pyplot(fig2)
+
 
 
 

@@ -87,7 +87,7 @@ def fuzzy_map(name, cutoff=0.70):
 # STREAMLIT UI
 # -------------------------------------------------
 st.set_page_config(page_title="Multi-Semester Duty Analyzer", layout="wide")
-st.title("📚 Multi-Semester Exam Duty Analyzer")
+st.title("Multi-Semester Exam Duty Analyzer")
 st.caption("Automatically merges multiple semester duty files and computes total duty per faculty.")
 
 
@@ -148,7 +148,7 @@ final_df = pd.concat(summary_all)
 final_total = final_df.groupby("MappedName")["TotalDuty"].sum().reset_index()
 final_total = final_total.sort_values("TotalDuty", ascending=False)
 
-st.header("📊 Total Duty Across All Semesters")
+st.header("Total Duty Across All Semesters")
 st.dataframe(final_total)
 
 
@@ -164,23 +164,36 @@ merged = merged.drop(columns=["MappedName"])
 # -------------------------------------------------
 # HEATMAP
 # -------------------------------------------------
-st.subheader("🔥 Combined Heatmap (Faculty × Semester)")
+#st.subheader("Heatmap (Faculty × Semester)")
 
-pivot = final_df.pivot_table(index="MappedName",
-                             columns="Semester",
-                             values="TotalDuty",
-                             aggfunc="sum",
-                             fill_value=0)
+#pivot = final_df.pivot_table(index="MappedName",
+#                             columns="Semester",
+#                             values="TotalDuty",
+#                             aggfunc="sum",
+#                             fill_value=0)
 
-fig, ax = plt.subplots(figsize=(14,10))
-sns.heatmap(pivot, cmap="YlGnBu", annot=True, fmt="d")
+#fig, ax = plt.subplots(figsize=(14,10))
+#sns.heatmap(pivot, cmap="YlGnBu", annot=True, fmt="d")
+#st.pyplot(fig)
+
+fig, ax = plt.subplots(figsize=(14, 10))
+sns.heatmap(
+    heatmap_df,
+    cmap="YlOrRd",  # Yellow → Orange → Red
+    annot=True,
+    fmt="d",
+    linewidths=0.4,
+    linecolor="black",
+    cbar_kws={'label': 'Duty Count'},
+)
+ax.set_title("Duty Heatmap – Sunset Overload Theme", fontsize=18, fontweight='bold')
 st.pyplot(fig)
 
 
 # -------------------------------------------------
 # MINIMUM DUTY
 # -------------------------------------------------
-st.subheader("📉 Faculty With Minimum Non-zero Duty")
+st.subheader("Faculty With Minimum Duty")
 
 non_zero = merged[merged["TotalDuty"] > 0]
 
@@ -194,7 +207,7 @@ else:
 # -------------------------------------------------
 # MAXIMUM DUTY
 # -------------------------------------------------
-st.subheader("📈 Faculty With Maximum Duty")
+st.subheader("Faculty With Maximum Duty")
 
 max_val = merged["TotalDuty"].max()
 st.dataframe(merged[merged["TotalDuty"] == max_val])
@@ -203,19 +216,19 @@ st.dataframe(merged[merged["TotalDuty"] == max_val])
 # -------------------------------------------------
 # ZERO DUTY
 # -------------------------------------------------
-st.subheader("🚫 Faculty With ZERO Duties")
+st.subheader("Faculty With ZERO Duties")
 st.dataframe(merged[merged["TotalDuty"] == 0])
 
 
 # -------------------------------------------------
 # DISTRIBUTION
 # -------------------------------------------------
-st.subheader("📊 Full Duty Distribution")
+st.subheader("Full Duty Distribution")
 st.dataframe(merged)
 
 st.bar_chart(merged.set_index("Name")["TotalDuty"])
 # ----------------- FINAL SUMMARY TABLE -----------------
-st.subheader("📌 Overall Duty Assignment Summary")
+st.subheader("Overall Duty Assignment Summary")
 
 # Total faculty in master list
 total_faculty = len(merged)

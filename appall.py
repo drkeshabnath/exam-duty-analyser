@@ -38,6 +38,7 @@ full_faculty_list = [
     "Dr. Debajyoti Dutta","Dr. Keshab Nath","Dr. Kamal Saharia",
     "Dr. Jagannath Bhuyan","Dr. Bobby D. Langthasa"
 ]
+
 full_faculty_list = [n.strip() for n in full_faculty_list]
 
 
@@ -56,26 +57,28 @@ master_df["Norm"] = master_df["MasterName"].apply(normalize)
 
 
 def fuzzy_map(name, cutoff=0.70):
-    if not isinstance(name, str): name=str(name)
+    if not isinstance(name, str): 
+        name = str(name)
+
     raw = name.strip()
     norm = normalize(raw)
 
-    # Exact
+    # Exact match
     for m in full_faculty_list:
         if m.lower() == raw.lower():
             return m, 1.0
 
-    # norm exact
+    # Exact normalized match
     eq = master_df[master_df["Norm"] == norm]
     if not eq.empty:
         return eq.iloc[0]["MasterName"], 1.0
 
-    # fuzzy
+    # Fuzzy match
     best = difflib.get_close_matches(norm, master_df["Norm"].tolist(), n=1)
     if best:
         score = difflib.SequenceMatcher(None, norm, best[0]).ratio()
         if score >= cutoff:
-            return master_df[master_df["Norm"]==best[0]].iloc[0]["MasterName"], score
+            return master_df[master_df["Norm"] == best[0]].iloc[0]["MasterName"], score
 
     return None, 0.0
 
@@ -85,7 +88,7 @@ def fuzzy_map(name, cutoff=0.70):
 # -------------------------------------------------
 st.set_page_config(page_title="Multi-Semester Duty Analyzer", layout="wide")
 st.title("📚 Multi-Semester Exam Duty Analyzer")
-st.caption("This tool merges duty data from multiple semesters to compute **total faculty duty load**.")
+st.caption("Automatically merges multiple semester duty files and computes total duty per faculty.")
 
 
 # -------------------------------------------------
@@ -96,13 +99,12 @@ files = [f for f in os.listdir(DATA_FOLDER)
          if f.lower().endswith((".xlsx",".xls",".csv"))]
 
 if not files:
-    st.error("No files inside duty_files/. Please add files.")
+    st.error("No files found in duty_files/. Please add duty sheets.")
     st.stop()
 
-st.success(f"Detected {len(files)} duty files")
+st.success(f"Detected {len(files)} files")
 
-combined_all = []   # store per-file final tables
-summary_all = []    # store per-file summaries
+summary_all = []
 
 
 # -------------------------------------------------
@@ -113,38 +115,34 @@ for filename in files:
 
     path = os.path.join(DATA_FOLDER, filename)
 
-    if filename.endswith(".csv"):
-        df = pd.read_csv(path)
-    else:
-        df = pd.read_excel(path)
-
+    df = pd.read_excel(path) if filename.endswith((".xlsx",".xls")) else pd.read_csv(path)
     df.columns = [str(c).strip() for c in df.columns]
+
     name_col = df.columns[0]
-    df = df.rename(columns={name_col:"RawName"})
-    df["RawName"] = df["RawName"].astype(str).str.strip()
+    df = df.rename(columns={name_col: "RawName"})
+    df["RawName"] = df["RawName"].astype(str).strip()
 
-    duty_cols = [c for c in df.columns if c!="RawName"]
+    duty_cols = [c for c in df.columns if c != "RawName"]
 
-    # convert to duty = 1/0
-    df[duty_cols] = df[duty_cols].apply(pd.to_numeric, errors='coerce').fillna(0)
+    df[duty_cols] = df[duty_cols].apply(pd.to_numeric, errors="coerce").fillna(0)
     df[duty_cols] = (df[duty_cols] > 0).astype(int)
 
-    # fuzzy map names
+    # fuzzy map
     df["MappedName"], df["Score"] = zip(*df["RawName"].apply(lambda x: fuzzy_map(x)))
 
-    # per-file summary
     df["TotalDuty"] = df[duty_cols].sum(axis=1)
-    file_summary = df.groupby("MappedName")["TotalDuty"].sum().reset_index()
-    file_summary["Semester"] = filename
 
-    summary_all.append(file_summary)
-    combined_all.append(df)
+    summary = df.groupby("MappedName")["TotalDuty"].sum().reset_index()
+    summary["Semester"] = filename
+
+    summary_all.append(summary)
 
 
 # -------------------------------------------------
-# MERGE ALL SEMESTER SUMMARIES
+# MERGE ALL SEMESTERS
 # -------------------------------------------------
 final_df = pd.concat(summary_all)
+
 final_total = final_df.groupby("MappedName")["TotalDuty"].sum().reset_index()
 final_total = final_total.sort_values("TotalDuty", ascending=False)
 
@@ -153,9 +151,18 @@ st.dataframe(final_total)
 
 
 # -------------------------------------------------
-# HEATMAP ACROSS ALL FILES
+# BUILD MERGED TABLE FOR ZERO, MIN, MAX
 # -------------------------------------------------
-st.subheader("🔥 Combined Duty Heatmap (All Semesters)")
+merged = pd.DataFrame({"Name": full_faculty_list})
+merged = merged.merge(final_total, left_on="Name", right_on="MappedName", how="left")
+merged["TotalDuty"] = merged["TotalDuty"].fillna(0).astype(int)
+merged = merged.drop(columns=["MappedName"])
+
+
+# -------------------------------------------------
+# HEATMAP
+# -------------------------------------------------
+st.subheader("🔥 Combined Heatmap (Faculty × Semester)")
 
 pivot = final_df.pivot_table(index="MappedName",
                              columns="Semester",
@@ -163,91 +170,45 @@ pivot = final_df.pivot_table(index="MappedName",
                              aggfunc="sum",
                              fill_value=0)
 
-fig, ax = plt.subplots(figsize=(14, 10))
-sns.heatmap(pivot,
-            cmap="YlGnBu",
-            annot=True,
-            fmt="d",
-            linewidths=0.5,
-            linecolor="gray",
-            cbar_kws={'label':'Duty Count'})
-ax.set_title("Combined Duty Heatmap (Faculty × Semester)", fontsize=16)
+fig, ax = plt.subplots(figsize=(14,10))
+sns.heatmap(pivot, cmap="YlGnBu", annot=True, fmt="d")
 st.pyplot(fig)
 
 
 # -------------------------------------------------
-# BAR CHART
+# MINIMUM DUTY
 # -------------------------------------------------
-st.subheader("📌 Bar Chart – Total Duty Across All Semesters")
+st.subheader("📉 Faculty With Minimum Non-zero Duty")
 
-fig2, ax2 = plt.subplots(figsize=(12, 6))
-ax2.bar(final_total["MappedName"], final_total["TotalDuty"], color="teal")
-ax2.set_xticklabels(final_total["MappedName"], rotation=90)
-ax2.set_ylabel("Duty Count")
-ax2.set_title("Total Duty Load Across All Semesters")
-st.pyplot(fig2)
-
-
-# -------------------------------------------------
-# PEOPLE WITH ZERO DUTY
-# -------------------------------------------------
-st.subheader("🚫 Faculty With Zero Duties")
-
-final_total_full = pd.DataFrame({"Name": full_faculty_list})
-final_total_full = final_total_full.merge(final_total,
-                                          left_on="Name",
-                                          right_on="MappedName",
-                                          how="left")
-
-final_total_full["TotalDuty"] = final_total_full["TotalDuty"].fillna(0)
-zero = final_total_full[final_total_full["TotalDuty"] == 0]
-st.dataframe(zero)
-# 2. Minimum non-zero duty
 non_zero = merged[merged["TotalDuty"] > 0]
-st.markdown("### Faculty with MINIMUM Non-zero Duties")
+
 if non_zero.empty:
-    st.info("No faculty has non-zero duties.")
+    st.info("No faculty assigned duties.")
 else:
-    min_duty = non_zero["TotalDuty"].min()
-    st.info(f"Minimum non-zero duties: **{min_duty}**")
-    st.dataframe(merged[merged["TotalDuty"] == min_duty])
+    min_val = non_zero["TotalDuty"].min()
+    st.dataframe(non_zero[non_zero["TotalDuty"] == min_val])
 
-# 3. Maximum duty
-st.markdown("### Faculty with MAXIMUM Duties")
-max_duty = merged["TotalDuty"].max()
-st.success(f"Maximum duties: **{max_duty}**")
-st.dataframe(merged[merged["TotalDuty"] == max_duty])
 
-# 4. Full distribution
-st.markdown("### Full Duty Distribution")
+# -------------------------------------------------
+# MAXIMUM DUTY
+# -------------------------------------------------
+st.subheader("📈 Faculty With Maximum Duty")
+
+max_val = merged["TotalDuty"].max()
+st.dataframe(merged[merged["TotalDuty"] == max_val])
+
+
+# -------------------------------------------------
+# ZERO DUTY
+# -------------------------------------------------
+st.subheader("🚫 Faculty With ZERO Duties")
+st.dataframe(merged[merged["TotalDuty"] == 0])
+
+
+# -------------------------------------------------
+# DISTRIBUTION
+# -------------------------------------------------
+st.subheader("📊 Full Duty Distribution")
 st.dataframe(merged)
 
-st.markdown("### Overall Duty Distribution")
 st.bar_chart(merged.set_index("Name")["TotalDuty"])
-
-# ----------------- FINAL SUMMARY TABLE -----------------
-st.subheader("Overall Duty Assignment Summary")
-
-total_faculty = len(merged)
-no_duty_count = (merged["TotalDuty"] == 0).sum()
-duty_assigned_count = total_faculty - no_duty_count
-
-summary_df = pd.DataFrame({
-    "Metric": [
-        "Total Faculty",
-        "Faculty Assigned No Duty",
-        "Faculty Assigned Duty",
-        "Percentage Assigned Duty",
-        "Percentage No Duty"
-    ],
-    "Value": [
-        total_faculty,
-        no_duty_count,
-        duty_assigned_count,
-        f"{(duty_assigned_count / total_faculty) * 100:.2f}%",
-        f"{(no_duty_count / total_faculty) * 100:.2f}%"
-    ]
-})
-
-st.dataframe(summary_df)
-

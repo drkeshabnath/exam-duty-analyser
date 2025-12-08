@@ -120,7 +120,9 @@ for filename in files:
 
     name_col = df.columns[0]
     df = df.rename(columns={name_col: "RawName"})
-    df["RawName"] = df["RawName"].astype(str).strip()
+    #df["RawName"] = df["RawName"].astype(str).strip()
+    df["RawName"] = df["RawName"].astype(str).str.strip()
+
 
     duty_cols = [c for c in df.columns if c != "RawName"]
 

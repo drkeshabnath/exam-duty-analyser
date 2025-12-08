@@ -242,7 +242,7 @@ faculty_summary_raw = (
 st.dataframe(faculty_summary_raw)
 
 # ----------------- CANONICAL SUMMARY (BY MAPPED MASTER NAME) -----------------
-st.subheader("Canonical Duty Summary")
+st.subheader("Duty Summary")
 
 # Only keep rows that got mapped to a master name
 mapped_df = df[~df["MappedName"].isna()].copy()
@@ -263,7 +263,7 @@ total_duty_sum = canonical_summary["TotalDuty"].sum()
 col1, col2 = st.columns(2)
 
 with col1:
-    st.markdown("### Duty Count per Faculty (Canonical)")
+    st.markdown("### Duty Count per Faculty")
     if total_duty_sum == 0:
         st.info("All TotalDuty values are 0 – no duties assigned (after mapping).")
     else:
@@ -271,12 +271,12 @@ with col1:
         canonical_summary.set_index("Name")["TotalDuty"].plot(kind="bar", ax=ax1)
         ax1.set_ylabel("Duty Count")
         ax1.set_xticklabels(ax1.get_xticklabels(), rotation=90)
-        ax1.set_title("Duty Distribution (Canonical Names)")
+        ax1.set_title("Duty Distribution")
         fig1.tight_layout()
         st.pyplot(fig1)
 
 with col2:
-    st.markdown("### Duty Share (Canonical)")
+    st.markdown("### Duty Share")
     if total_duty_sum == 0:
         st.info("Cannot draw pie chart – all TotalDuty values are 0.")
     else:
@@ -288,7 +288,7 @@ with col2:
             labels=canonical_summary["Name"],
             autopct="%1.1f%%"
         )
-        ax2.set_title("Duty Share (%) – Canonical")
+        ax2.set_title("Duty Share (%)")
         fig2.tight_layout()
         st.pyplot(fig2)
 

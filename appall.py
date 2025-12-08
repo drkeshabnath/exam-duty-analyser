@@ -202,3 +202,52 @@ final_total_full = final_total_full.merge(final_total,
 final_total_full["TotalDuty"] = final_total_full["TotalDuty"].fillna(0)
 zero = final_total_full[final_total_full["TotalDuty"] == 0]
 st.dataframe(zero)
+# 2. Minimum non-zero duty
+non_zero = merged[merged["TotalDuty"] > 0]
+st.markdown("### Faculty with MINIMUM Non-zero Duties")
+if non_zero.empty:
+    st.info("No faculty has non-zero duties.")
+else:
+    min_duty = non_zero["TotalDuty"].min()
+    st.info(f"Minimum non-zero duties: **{min_duty}**")
+    st.dataframe(merged[merged["TotalDuty"] == min_duty])
+
+# 3. Maximum duty
+st.markdown("### Faculty with MAXIMUM Duties")
+max_duty = merged["TotalDuty"].max()
+st.success(f"Maximum duties: **{max_duty}**")
+st.dataframe(merged[merged["TotalDuty"] == max_duty])
+
+# 4. Full distribution
+st.markdown("### Full Duty Distribution")
+st.dataframe(merged)
+
+st.markdown("### Overall Duty Distribution")
+st.bar_chart(merged.set_index("Name")["TotalDuty"])
+
+# ----------------- FINAL SUMMARY TABLE -----------------
+st.subheader("Overall Duty Assignment Summary")
+
+total_faculty = len(merged)
+no_duty_count = (merged["TotalDuty"] == 0).sum()
+duty_assigned_count = total_faculty - no_duty_count
+
+summary_df = pd.DataFrame({
+    "Metric": [
+        "Total Faculty",
+        "Faculty Assigned No Duty",
+        "Faculty Assigned Duty",
+        "Percentage Assigned Duty",
+        "Percentage No Duty"
+    ],
+    "Value": [
+        total_faculty,
+        no_duty_count,
+        duty_assigned_count,
+        f"{(duty_assigned_count / total_faculty) * 100:.2f}%",
+        f"{(no_duty_count / total_faculty) * 100:.2f}%"
+    ]
+})
+
+st.dataframe(summary_df)
+

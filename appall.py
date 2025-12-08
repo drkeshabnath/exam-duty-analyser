@@ -164,13 +164,13 @@ merged = merged.drop(columns=["MappedName"])
 # -------------------------------------------------
 # HEATMAP
 # -------------------------------------------------
-#st.subheader("Heatmap (Faculty × Semester)")
+st.subheader("Heatmap (Faculty × Semester)")
 
-#pivot = final_df.pivot_table(index="MappedName",
-#                             columns="Semester",
-#                             values="TotalDuty",
-#                             aggfunc="sum",
-#                             fill_value=0)
+pivot = final_df.pivot_table(index="MappedName",
+                             columns="Semester",
+                             values="TotalDuty",
+                             aggfunc="sum",
+                             fill_value=0)
 
 #fig, ax = plt.subplots(figsize=(14,10))
 #sns.heatmap(pivot, cmap="YlGnBu", annot=True, fmt="d")
@@ -186,7 +186,7 @@ sns.heatmap(
     linecolor="black",
     cbar_kws={'label': 'Duty Count'},
 )
-ax.set_title("Duty Heatmap – Sunset Overload Theme", fontsize=18, fontweight='bold')
+ax.set_title("Duty Heatmap", fontsize=18, fontweight='bold')
 st.pyplot(fig)
 
 

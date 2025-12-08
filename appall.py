@@ -178,7 +178,7 @@ pivot = final_df.pivot_table(index="MappedName",
 
 fig, ax = plt.subplots(figsize=(14, 10))
 sns.heatmap(
-    heatmap_df,
+    pivot,
     cmap="YlOrRd",  # Yellow → Orange → Red
     annot=True,
     fmt="d",

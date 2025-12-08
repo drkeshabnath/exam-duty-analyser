@@ -255,7 +255,7 @@ else:
 
 summary_df = pd.DataFrame({
     "Metric": [
-        "Total Faculty in Master List",
+        "Total Faculty",
         "Faculty Assigned NO Duty",
         "Faculty Assigned SOME Duty",
         "Percentage Assigned Duty",

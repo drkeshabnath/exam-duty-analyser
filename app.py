@@ -35,7 +35,7 @@ full_faculty_list = [
     "Dr. Hirumani Kalita", "Mrs. Mallika Pamsong", "Dr. Nabanita Baruah",
     "Mr. Manish Kiling", "Dr. Sabita Bhagabati", "Dr. Satyananda Mohapatra",
     "Dr. Debajyoti Dutta", "Dr. Keshab Nath", "Dr. Kamal Saharia",
-    "Dr. Jagannath Bhuyan", "Dr. Bobby D. Langthasa"
+    "Dr. Jagannath Bhuyan", "Dr. Bobby D. Langthasa", "Dr. Gautam Kalita"
 ]
 full_faculty_list = [n.strip() for n in full_faculty_list]
 

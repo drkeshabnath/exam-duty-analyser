@@ -214,3 +214,54 @@ st.subheader("📊 Full Duty Distribution")
 st.dataframe(merged)
 
 st.bar_chart(merged.set_index("Name")["TotalDuty"])
+# ----------------- FINAL SUMMARY TABLE -----------------
+st.subheader("📌 Overall Duty Assignment Summary")
+
+# Total faculty in master list
+total_faculty = len(merged)
+
+# Counts
+no_duty_count = (merged["TotalDuty"] == 0).sum()
+duty_assigned_count = total_faculty - no_duty_count
+
+# Avoid division-by-zero error
+if total_faculty > 0:
+    pct_assigned = (duty_assigned_count / total_faculty) * 100
+    pct_no_duty = (no_duty_count / total_faculty) * 100
+else:
+    pct_assigned = pct_no_duty = 0
+
+# Additional statistics
+if merged["TotalDuty"].sum() > 0:
+    avg_duties = merged["TotalDuty"].mean()
+    max_duty = merged["TotalDuty"].max()
+    min_non_zero = merged[merged["TotalDuty"] > 0]["TotalDuty"].min() \
+                    if (merged["TotalDuty"] > 0).any() else 0
+else:
+    avg_duties = max_duty = min_non_zero = 0
+
+summary_df = pd.DataFrame({
+    "Metric": [
+        "Total Faculty in Master List",
+        "Faculty Assigned NO Duty",
+        "Faculty Assigned SOME Duty",
+        "Percentage Assigned Duty",
+        "Percentage No Duty",
+        "Average Duty Load",
+        "Maximum Duty Assigned",
+        "Minimum Duty Assigned (Non-zero)"
+    ],
+    "Value": [
+        total_faculty,
+        no_duty_count,
+        duty_assigned_count,
+        f"{pct_assigned:.2f}%",
+        f"{pct_no_duty:.2f}%",
+        f"{avg_duties:.2f}",
+        max_duty,
+        min_non_zero
+    ]
+})
+
+st.dataframe(summary_df, use_container_width=True)
+

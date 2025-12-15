@@ -56,7 +56,7 @@ master_df = pd.DataFrame({"MasterName": full_faculty_list})
 master_df["MasterNorm"] = master_df["MasterName"].apply(normalize_name)
 master_norm_list = master_df["MasterNorm"].tolist()
 
-def fuzzy_map_name(raw_name: str, cutoff: float = 0.55):
+def fuzzy_map_name(raw_name: str, cutoff: float = 0.65):
     """
     Map a raw uploaded name to the closest master faculty name.
     Returns (best_name, score, strategy) or (None, 0, 'no_match').

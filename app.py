@@ -90,13 +90,13 @@ def fuzzy_map_name(raw_name: str, cutoff: float = 0.75):
                 return candidate_row["MasterName"], score, "fuzzy"
 
     # 4. Try last-name-based heuristic if fuzzy score was low
-    tokens = norm.split()
-    if len(tokens) >= 1:
-        last = tokens[-1]
-        # candidates where last name appears
-        candidates = master_df[master_df["MasterNorm"].str.contains(last)]
-        if len(candidates) == 1:
-            return candidates.iloc[0]["MasterName"], 0.7, "lastname_unique"
+   # tokens = norm.split()
+   # if len(tokens) >= 1:
+   #     last = tokens[-1]
+      #####  # candidates where last name appears
+    #    candidates = master_df[master_df["MasterNorm"].str.contains(last)]
+     #   if len(candidates) == 1:
+     #       return candidates.iloc[0]["MasterName"], 0.7, "lastname_unique"
 
     # 5. No good match
     return None, 0.0, "no_match"

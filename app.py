@@ -5,6 +5,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import streamlit as st
 import seaborn as sns
+from datetime import datetime
 
 
 # ----------------- MASTER FACULTY LIST -----------------
@@ -104,8 +105,6 @@ def fuzzy_map_name(raw_name: str, cutoff: float = 0.75):
 # ----------------- STREAMLIT CONFIG -----------------
 st.set_page_config(page_title="Duty Analysis with Fuzzy Name Matching", layout="wide")
 st.title("Exam Duty Analysis")
-from datetime import datetime
-
 PDF_URL = "https://drive.google.com/drive/folders/1fZzvu3DBh00tdDeBxOxGItdSxht5oJuE?usp=sharing"  # replace with actual PDF link
 
 st.markdown(

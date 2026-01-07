@@ -88,6 +88,22 @@ def fuzzy_map(name, cutoff=0.70):
 # -------------------------------------------------
 st.set_page_config(page_title="Multi-Semester Duty Analyzer", layout="wide")
 st.title("Multi-Semester Exam Duty Analyzer")
+PDF_URL = "https://drive.google.com/drive/folders/1fZzvu3DBh00tdDeBxOxGItdSxht5oJuE?usp=sharing"  # replace with actual PDF link
+col1, col2 = st.columns([8, 2])
+
+with col2:
+    st.markdown(
+        f"""
+        <div style="text-align:right; font-size:13px;">
+            🔗 <a href="{PDF_URL}" target="_blank"
+            style="text-decoration:none; color:#1f77b4; font-weight:500;">
+            View Original Duty PDF
+            </a>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
 st.caption("Automatically merges multiple semester duty files and computes total duty per faculty.")
 
 

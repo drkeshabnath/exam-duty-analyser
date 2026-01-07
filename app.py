@@ -106,7 +106,7 @@ st.set_page_config(page_title="Duty Analysis with Fuzzy Name Matching", layout="
 st.title("Exam Duty Analysis")
 from datetime import datetime
 
-PDF_URL = "https://YOUR_PDF_LINK_HERE"  # replace with actual PDF link
+PDF_URL = "https://drive.google.com/drive/folders/1fZzvu3DBh00tdDeBxOxGItdSxht5oJuE?usp=sharing"  # replace with actual PDF link
 
 st.markdown(
     f"""

@@ -277,4 +277,15 @@ summary_df = pd.DataFrame({
 })
 
 st.dataframe(summary_df, use_container_width=True)
+# ----------------- COPYRIGHT -----------------
+st.markdown(
+    """
+    <hr style="margin-top:40px;margin-bottom:10px;">
+    <div style="text-align:center; font-size:13px; color:gray;">
+        © Dr. Keshab Nath, Dept. of Computer Science & Engineering,<br>
+        Bhattadev University, Bajali
+    </div>
+    """,
+    unsafe_allow_html=True
+)
 

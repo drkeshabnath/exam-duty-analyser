@@ -105,20 +105,6 @@ def fuzzy_map_name(raw_name: str, cutoff: float = 0.75):
 # ----------------- STREAMLIT CONFIG -----------------
 st.set_page_config(page_title="Duty Analysis with Fuzzy Name Matching", layout="wide")
 st.title("Exam Duty Analysis")
-PDF_URL = "https://drive.google.com/drive/folders/1fZzvu3DBh00tdDeBxOxGItdSxht5oJuE?usp=sharing"  # replace with actual PDF link
-
-st.markdown(
-    f"""
-    <div style="position: absolute; top: 15px; right: 20px; font-size: 13px;">
-        🔗 <a href="{PDF_URL}" target="_blank"
-        style="text-decoration:none; color:#1f77b4; font-weight:500;">
-        View Original Duty PDF
-        </a>
-    </div>
-    """,
-    unsafe_allow_html=True
-)
-
 st.caption("Upload one duty file: first column = faculty names (approx), other columns = duty sessions (1 / blank).")
 
 #uploaded_file = st.file_uploader(
